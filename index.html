@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#171233">
+<title>É top?</title>
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  :root{
+    --void:#171233; --panel:#241c4d; --edge:#3a2f70;
+    --amber:#FFC24B; --pink:#FF4D7E; --mint:#3FE0AE;
+    --paper:#EFEBFF; --dim:#9B90CF;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--void);color:var(--paper);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    min-height:100%;-webkit-text-size-adjust:100%}
+  body{padding:max(18px,env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))}
+  #app{max-width:520px;margin:0 auto}
+
+  /* a voz do jogo: numeral de parada de sucesso */
+  .chart{font-family:Impact,"Haettenschweiler","Arial Narrow Bold",sans-serif;
+    letter-spacing:.02em;text-transform:uppercase;line-height:.92}
+
+  .topo{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px}
+  .logo{font-size:34px;color:var(--amber)}
+  .logo span{color:var(--pink)}
+  .tagline{font-size:11px;color:var(--dim);margin-top:3px}
+
+  .eyebrow{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--dim);font-weight:700;margin-bottom:6px}
+  .card{background:var(--panel);border:1px solid var(--edge);border-radius:12px;padding:14px;margin-bottom:14px}
+
+  button{font:inherit;cursor:pointer;border:none;border-radius:10px;
+    transition:transform .12s ease,filter .12s ease}
+  button:hover:not(:disabled){filter:brightness(1.08)}
+  button:active:not(:disabled){transform:translateY(1px)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  .b1{background:var(--amber);color:#2a1c00;font-weight:800;padding:13px;width:100%;font-size:15px}
+  .b2{background:transparent;color:var(--paper);border:1px solid var(--edge);padding:11px;width:100%}
+  .bd{background:var(--pink);color:#fff;font-weight:800;padding:14px;flex:1;font-size:15px}
+  .ba{background:var(--edge);color:var(--paper);font-weight:700;padding:14px;flex:1;font-size:15px}
+  .mini{width:auto;padding:6px 12px;font-size:12px}
+
+  input{font:inherit;width:100%;background:#0f0b26;color:var(--paper);
+    border:1px solid var(--edge);border-radius:10px;padding:12px 13px}
+  input::placeholder{color:#6d6398}
+
+  .fita{display:flex;gap:4px;margin-top:14px}
+  .slot{flex:1;height:13px;border-radius:3px;background:#0f0b26;border:1px solid var(--edge)}
+  .slot.on{background:linear-gradient(90deg,var(--amber),#ff9b3d);border-color:transparent}
+
+  .tag{background:var(--panel);border:1px solid var(--edge);border-radius:20px;
+    padding:7px 13px;font-size:13px;display:inline-block}
+  .dito{font-size:12px;background:var(--panel);border:1px solid var(--edge);
+    border-radius:6px;padding:5px 9px}
+  .linha{display:flex;justify-content:space-between;padding:5px 0;font-size:14px}
+  .erro{color:var(--pink);font-size:13px;margin-top:10px}
+
+  .pop{animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
+  @keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+  .pulse{animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
+    }
+  </script>
+</body>
+</html>

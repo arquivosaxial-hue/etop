@@ -1,0 +1,15 @@
+{
+  "name": "É top?",
+  "short_name": "É top?",
+  "description": "Jogo de blefe sobre listas top 10.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#171233",
+  "theme_color": "#171233",
+  "icons": [
+    { "src": "icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
