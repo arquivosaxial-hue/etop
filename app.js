@@ -7,6 +7,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = "https://fylctjnwbmfslcfzuoru.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5bGN0am53Ym1mc2xjZnp1b3J1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0ODQ5NDIsImV4cCI6MjEwMjA2MDk0Mn0.qjuycnZi2ioXioOfwfaXCaGkvnsoWew3c4zxNdZvneQ";
 
+const VERSAO = "1.1.0";   // corrida livre no duvidar
+
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const app = document.getElementById("app");
 
@@ -289,7 +291,44 @@ app.addEventListener("click", (e) => {
   if (a === "copiar")  return navigator.clipboard?.writeText(location.href.split("?")[0]);
 });
 
+/* ====================== selo de versão ====================== */
+/* Fica no canto e serve para duas coisas: saber o que cada celular
+   está rodando, e forçar atualização quando o service worker teimar
+   em servir a versão antiga. */
+function selo() {
+  const d = document.createElement("div");
+  d.id = "selo";
+  d.textContent = "v" + VERSAO;
+  d.title = "Toque para atualizar o app";
+  d.style.cssText = [
+    "position:fixed", "right:10px", "bottom:max(8px,env(safe-area-inset-bottom))",
+    "font-size:10px", "letter-spacing:.08em", "color:var(--dim)",
+    "background:var(--panel)", "border:1px solid var(--edge)",
+    "border-radius:20px", "padding:3px 9px", "opacity:.6",
+    "cursor:pointer", "z-index:50", "user-select:none",
+  ].join(";");
+  d.onclick = atualizar;
+  document.body.appendChild(d);
+}
+
+async function atualizar() {
+  const d = document.getElementById("selo");
+  if (d) { d.textContent = "atualizando…"; d.style.opacity = "1"; }
+  try {
+    if (navigator.serviceWorker) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+    if (window.caches) {
+      const chaves = await caches.keys();
+      await Promise.all(chaves.map((k) => caches.delete(k)));
+    }
+  } catch { /* segue e recarrega assim mesmo */ }
+  location.reload();
+}
+
 /* ====================== partida ====================== */
+selo();
 render();
 if (eu?.sala_id) { puxarTudo().then(ouvir); }
 
