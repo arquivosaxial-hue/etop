@@ -7,7 +7,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = "https://fylctjnwbmfslcfzuoru.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5bGN0am53Ym1mc2xjZnp1b3J1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0ODQ5NDIsImV4cCI6MjEwMjA2MDk0Mn0.qjuycnZi2ioXioOfwfaXCaGkvnsoWew3c4zxNdZvneQ";
 
-const VERSAO = "1.1.0";   // corrida livre no duvidar
+const VERSAO = "1.2.0";   // tempo de resposta configurável
 
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const app = document.getElementById("app");
@@ -77,6 +77,18 @@ async function entrarSala(codigo, nome) {
 }
 
 const novaRodada = () => chamar("nova_rodada", { p_jogador: eu.jogador_id, p_segredo: eu.segredo });
+const configurar = (t) => chamar("configurar_sala", { p_jogador: eu.jogador_id, p_segredo: eu.segredo, p_tempo: t });
+
+/* O relógio é do servidor: passar_vez só passa se o prazo já venceu
+   de verdade. Se o celular estiver adiantado, a chamada é ignorada e
+   o ticker tenta de novo no segundo seguinte. */
+let passando = false;
+async function passarVez() {
+  if (passando) return;
+  passando = true;
+  await sb.rpc("passar_vez", { p_jogador: eu.jogador_id, p_segredo: eu.segredo });
+  setTimeout(() => { passando = false; }, 1200);
+}
 
 async function palpitar(texto) {
   if (sala.ditos.some((d) => norm(d.texto) === norm(texto))) {
@@ -151,6 +163,15 @@ function telaLobby() {
       <div style="font-size:12px;color:var(--dim);margin-top:8px">Mande o link e esse código para o grupo.</div>
       <button class="b2 mini" data-a="copiar" style="margin-top:12px">copiar link</button>
     </div>
+    <div class="eyebrow">tempo para responder</div>
+    <div style="display:flex;gap:8px;margin-bottom:18px">
+      ${[[5,"5 segundos"],[10,"10 segundos"],[0,"Sem tempo"]].map(([v,rot]) => {
+        const ativo = (sala.tempo_resposta ?? 0) === v;
+        return `<button class="${ativo ? "b1" : "b2"}" data-a="tempo" data-v="${v}"
+          style="flex:1;padding:10px;font-size:13px" ${souHost ? "" : "disabled"}>${rot}</button>`;
+      }).join("")}
+    </div>
+
     <div class="eyebrow">na sala (${jogadores.length})</div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px">
       ${jogadores.map((j) => `<span class="tag pop">${esc(j.nome)}${
@@ -182,6 +203,10 @@ function telaJogo() {
     </div>
 
     <div class="card">
+      ${sala.vez_expira && !emDisputa
+        ? `<div style="display:flex;justify-content:flex-end;margin-bottom:-6px">
+             <span id="cronometro" class="chart" style="font-size:22px;color:var(--dim)">–</span>
+           </div>` : ""}
       <div class="chart" style="font-size:24px">${esc(sala.pergunta ?? "")}</div>
       <div class="fita">${Array.from({ length: 10 }, (_, i) =>
         `<div class="slot ${i < ditos.length ? "on" : ""}"></div>`).join("")}</div>
@@ -284,12 +309,25 @@ app.addEventListener("click", (e) => {
   if (a === "criar")   return criarSala(document.getElementById("nome").value.trim());
   if (a === "entrar")  return entrarSala(document.getElementById("cod").value.trim().toUpperCase(),
                                          document.getElementById("nome").value.trim());
+  if (a === "tempo")   return configurar(Number(e.target.closest("[data-a]").dataset.v));
   if (a === "rodada")  return novaRodada();
   if (a === "palpitar")return palpitar(document.getElementById("palpite").value.trim());
   if (a === "duvidar") return duvidar();
   if (a === "sair")    return sair();
   if (a === "copiar")  return navigator.clipboard?.writeText(location.href.split("?")[0]);
 });
+
+/* ====================== cronômetro ====================== */
+/* Atualiza só o número, sem redesenhar a tela — se re-renderizasse a
+   cada segundo, o texto que a pessoa está digitando se perderia. */
+setInterval(() => {
+  const el = document.getElementById("cronometro");
+  if (!el || !sala?.vez_expira || sala.duvidando || sala.fase !== "jogo") return;
+  const resta = Math.max(0, Math.ceil((Date.parse(sala.vez_expira) - Date.now()) / 1000));
+  el.textContent = resta + "s";
+  el.style.color = resta <= 3 ? "var(--pink)" : "var(--dim)";
+  if (resta === 0) passarVez();
+}, 500);
 
 /* ====================== selo de versão ====================== */
 /* Fica no canto e serve para duas coisas: saber o que cada celular
