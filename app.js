@@ -7,7 +7,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = "https://fylctjnwbmfslcfzuoru.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5bGN0am53Ym1mc2xjZnp1b3J1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0ODQ5NDIsImV4cCI6MjEwMjA2MDk0Mn0.qjuycnZi2ioXioOfwfaXCaGkvnsoWew3c4zxNdZvneQ";
 
-const VERSAO = "1.2.0";   // tempo de resposta configurável
+const VERSAO = "1.3.0";   // link direto de convite
 
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const app = document.getElementById("app");
@@ -19,6 +19,17 @@ let jogadores = [];
 let canal = null;
 let erro = "";
 let ocupado = false;
+let ignorarConvite = false;
+
+/* Convite: etop.frentedigital.app.br/?s=ABCD */
+const codigoLink = (new URLSearchParams(location.search).get("s") || "")
+  .toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4);
+
+const linkDaSala = (codigo) => `${location.origin}${location.pathname}?s=${codigo}`;
+
+/* Depois de entrar, tira o ?s= da barra: recarregar não deve
+   reprocessar um convite que já foi aceito. */
+const limparUrl = () => history.replaceState({}, "", location.pathname);
 
 const salvarEu = (v) => { eu = v; localStorage.setItem("etop:eu", JSON.stringify(v)); };
 const esquecerEu = () => { eu = null; localStorage.removeItem("etop:eu"); };
@@ -66,6 +77,7 @@ async function criarSala(nome) {
   const d = await chamar("criar_sala", { p_nome: nome });
   if (!d) return;
   salvarEu({ ...d, nome });
+  limparUrl();
   await puxarTudo(); ouvir();
 }
 
@@ -73,6 +85,7 @@ async function entrarSala(codigo, nome) {
   const d = await chamar("entrar_sala", { p_codigo: codigo, p_nome: nome });
   if (!d) return;
   salvarEu({ ...d, nome });
+  limparUrl();
   await puxarTudo(); ouvir();
 }
 
@@ -136,6 +149,25 @@ const topo = (comSair) => `
   </div>`;
 
 function telaEntrada() {
+  const convite = codigoLink && !ignorarConvite;
+  if (convite) {
+    app.innerHTML = topo(false) + `
+      <div class="card pop" style="text-align:center;border-color:var(--amber)">
+        <div class="eyebrow" style="color:var(--amber)">você foi chamado para a sala</div>
+        <div class="chart" style="font-size:54px;color:var(--amber);letter-spacing:.12em">${esc(codigoLink)}</div>
+      </div>
+      <div class="card">
+        <div class="eyebrow">seu nome</div>
+        <input id="nome" placeholder="Como você aparece na mesa" maxlength="16" value="${esc(eu?.nome ?? "")}">
+      </div>
+      <button class="b1" data-a="convite-entrar" ${ocupado ? "disabled" : ""}>Entrar na sala ${esc(codigoLink)}</button>
+      <button class="b2" data-a="recusar" style="margin-top:10px">Criar outra sala</button>
+      ${erro ? `<p class="erro">${esc(erro)}</p>` : ""}`;
+    const i = document.getElementById("nome");
+    if (i) { i.focus(); i.onkeydown = (e) => { if (e.key === "Enter") entrarSala(codigoLink, i.value.trim()); }; }
+    return;
+  }
+
   app.innerHTML = topo(false) + `
     <div class="card">
       <div class="eyebrow">quem está jogando</div>
@@ -160,8 +192,8 @@ function telaLobby() {
     <div class="card" style="text-align:center">
       <div class="eyebrow">código da sala</div>
       <div class="chart" style="font-size:54px;color:var(--amber);letter-spacing:.12em">${esc(sala.codigo)}</div>
-      <div style="font-size:12px;color:var(--dim);margin-top:8px">Mande o link e esse código para o grupo.</div>
-      <button class="b2 mini" data-a="copiar" style="margin-top:12px">copiar link</button>
+      <div style="font-size:12px;color:var(--dim);margin-top:8px">Mande o link no grupo — quem abrir já cai aqui dentro.</div>
+      <button class="b1" data-a="convidar" style="margin-top:12px;width:auto;padding:10px 22px">convidar</button>
     </div>
     <div class="eyebrow">tempo para responder</div>
     <div style="display:flex;gap:8px;margin-bottom:18px">
@@ -295,6 +327,23 @@ function telaReveal() {
 }
 
 function render() {
+  desenhar();
+  // link de convite para uma sala diferente da que você já está
+  if (codigoLink && !ignorarConvite && sala && sala.codigo !== codigoLink) {
+    const d = document.createElement("div");
+    d.className = "card pop";
+    d.style.cssText = "border-color:var(--amber);margin-top:14px;text-align:center";
+    d.innerHTML = `<div style="font-size:13px;margin-bottom:10px">Te chamaram para a sala
+      <strong style="color:var(--amber)">${esc(codigoLink)}</strong>. Sair desta e ir para lá?</div>
+      <div style="display:flex;gap:8px">
+        <button class="ba" data-a="recusar">Ficar aqui</button>
+        <button class="bd" data-a="trocar">Ir para ${esc(codigoLink)}</button>
+      </div>`;
+    app.appendChild(d);
+  }
+}
+
+function desenhar() {
   if (!eu?.sala_id) return telaEntrada();
   if (!sala) { app.innerHTML = topo(true) + '<p class="pulse" style="color:var(--dim)">Carregando a sala…</p>'; return; }
   if (sala.fase === "lobby") return telaLobby();
@@ -309,13 +358,29 @@ app.addEventListener("click", (e) => {
   if (a === "criar")   return criarSala(document.getElementById("nome").value.trim());
   if (a === "entrar")  return entrarSala(document.getElementById("cod").value.trim().toUpperCase(),
                                          document.getElementById("nome").value.trim());
+  if (a === "convite-entrar") return entrarSala(codigoLink, document.getElementById("nome").value.trim());
   if (a === "tempo")   return configurar(Number(e.target.closest("[data-a]").dataset.v));
   if (a === "rodada")  return novaRodada();
   if (a === "palpitar")return palpitar(document.getElementById("palpite").value.trim());
   if (a === "duvidar") return duvidar();
   if (a === "sair")    return sair();
-  if (a === "copiar")  return navigator.clipboard?.writeText(location.href.split("?")[0]);
+  if (a === "convidar") return convidar();
+  if (a === "trocar")   { ignorarConvite = false; sair(); return; }
+  if (a === "recusar")  { ignorarConvite = true; render(); return; }
 });
+
+/* ====================== convite ====================== */
+async function convidar() {
+  const link = linkDaSala(sala.codigo);
+  const texto = `Bora jogar É top? Sala ${sala.codigo}: ${link}`;
+  const b = document.querySelector('[data-a="convidar"]');
+  try {
+    // no celular abre a folha de compartilhamento (WhatsApp e cia)
+    if (navigator.share) { await navigator.share({ title: "É top?", text: texto, url: link }); return; }
+    await navigator.clipboard.writeText(link);
+    if (b) { b.textContent = "link copiado"; setTimeout(() => { b.textContent = "convidar"; }, 2000); }
+  } catch { /* usuário cancelou */ }
+}
 
 /* ====================== cronômetro ====================== */
 /* Atualiza só o número, sem redesenhar a tela — se re-renderizasse a
