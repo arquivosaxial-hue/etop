@@ -7,7 +7,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = "https://fylctjnwbmfslcfzuoru.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5bGN0am53Ym1mc2xjZnp1b3J1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0ODQ5NDIsImV4cCI6MjEwMjA2MDk0Mn0.qjuycnZi2ioXioOfwfaXCaGkvnsoWew3c4zxNdZvneQ";
 
-const VERSAO = "1.4.0";   // novas regras: pontos, eliminacao, rodadas, puxador
+const VERSAO = "1.4.1";   // enter tambem duvida
 
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const app = document.getElementById("app");
@@ -427,6 +427,20 @@ async function convidar() {
     if (b) { b.textContent = "link copiado"; setTimeout(() => { b.textContent = "convidar"; }, 2000); }
   } catch { /* usuário cancelou */ }
 }
+
+/* ====================== enter para duvidar ====================== */
+/* Enter DENTRO do campo de palpite envia o palpite (comportamento
+   que já existia). Enter com o campo fora de foco dispara o DUVIDO,
+   se o botão estiver visível. Espaço também vale, por ser a tecla
+   mais rápida de acertar no desespero. */
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  if (e.repeat) return;                                   // segurar a tecla não metralha
+  const el = document.activeElement;
+  if (el && (el.tagName === "INPUT" || el.tagName === "BUTTON")) return;
+  const btn = document.querySelector('[data-a="duvidar"]');
+  if (btn && !btn.disabled) { e.preventDefault(); btn.click(); }
+});
 
 /* ====================== cronômetro ====================== */
 /* Atualiza só o número, sem redesenhar a tela — se re-renderizasse a
