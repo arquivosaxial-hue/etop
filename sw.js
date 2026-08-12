@@ -1,6 +1,6 @@
 // Cache só do casco do app. Nada de jogo fica em cache: o estado
 // vem do Supabase em tempo real, e servir estado velho quebraria a rodada.
-const VERSAO = "etop-v1.4.0";
+const VERSAO = "etop-v1.4.1";
 const CASCO = ["./index.html", "./app.js", "./manifest.webmanifest"];
 
 self.addEventListener("install", (e) => {
