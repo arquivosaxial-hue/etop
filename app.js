@@ -75,7 +75,6 @@ async function entrarSala(codigo, nome) {
 }
 
 const novaRodada = () => chamar("nova_rodada", { p_jogador: eu.jogador_id, p_segredo: eu.segredo });
-const aceitar    = () => chamar("aceitar",     { p_jogador: eu.jogador_id, p_segredo: eu.segredo });
 
 async function palpitar(texto) {
   if (sala.ditos.some((d) => norm(d.texto) === norm(texto))) {
@@ -166,9 +165,13 @@ function telaLobby() {
 }
 
 function telaJogo() {
-  const minhaVez = sala.vez_de === eu.jogador_id && !sala.pendente;
-  const souDecisor = sala.decisor === eu.jogador_id;
   const ditos = sala.ditos ?? [];
+  const ult = ditos.length ? ditos[ditos.length - 1] : null;
+  const emDisputa = !!sala.duvidando;
+  const minhaVez = sala.vez_de === eu.jogador_id && !emDisputa;
+  // qualquer um menos quem falou, enquanto o próximo palpite não entra
+  const podeDuvidar = !!ult && !emDisputa && ult.jogador_id !== eu.jogador_id;
+  const anteriores = ditos.slice(0, -1);
 
   app.innerHTML = topo(true) + `
     <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-bottom:10px">
@@ -183,30 +186,33 @@ function telaJogo() {
       <div style="font-size:10.5px;color:var(--dim);margin-top:6px">${ditos.length} de 10 lugares chutados</div>
     </div>
 
-    ${ditos.length ? `<div class="eyebrow">já foi dito</div>
+    ${anteriores.length ? `<div class="eyebrow">já foi dito</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
-        ${ditos.map((d) => `<span class="dito">${esc(d.texto)}<span style="color:var(--dim)"> · ${esc(nomeDe(d.jogador_id))}</span></span>`).join("")}
+        ${anteriores.map((d) => `<span class="dito">${esc(d.texto)}<span style="color:var(--dim)"> · ${esc(nomeDe(d.jogador_id))}</span></span>`).join("")}
       </div>` : ""}
 
-    ${sala.pendente ? `
+    ${ult ? `
       <div class="card pop" style="border-color:var(--pink)">
         <div class="eyebrow" style="color:var(--pink)">no ar</div>
-        <div class="chart" style="font-size:26px">${esc(sala.pendente.texto)}</div>
-        <div style="font-size:12px;color:var(--dim);margin-top:4px">disse ${esc(nomeDe(sala.pendente.jogador_id))}</div>
-        ${souDecisor
-          ? `<div style="display:flex;gap:8px;margin-top:14px">
-               <button class="bd" data-a="duvidar" ${ocupado ? "disabled" : ""}>${ocupado ? "conferindo…" : "DUVIDO"}</button>
-               <button class="ba" data-a="aceitar" ${ocupado ? "disabled" : ""}>Aceito e jogo</button>
-             </div>`
-          : `<p class="pulse" style="color:var(--dim);font-size:13px;margin-top:12px">${esc(nomeDe(sala.decisor))} está decidindo…</p>`}
-      </div>`
-    : minhaVez ? `
+        <div class="chart" style="font-size:26px">${esc(ult.texto)}</div>
+        <div style="font-size:12px;color:var(--dim);margin-top:4px">disse ${esc(nomeDe(ult.jogador_id))}</div>
+        ${emDisputa
+          ? `<p class="pulse" style="color:var(--pink);font-size:14px;margin-top:12px;font-weight:700">
+               ${esc(nomeDe(sala.duvidando))} duvidou! conferindo…</p>`
+          : podeDuvidar
+            ? `<button class="bd" data-a="duvidar" style="width:100%;margin-top:14px" ${ocupado ? "disabled" : ""}>${ocupado ? "conferindo…" : "DUVIDO"}</button>`
+            : `<p style="color:var(--dim);font-size:12px;margin-top:12px">Do seu palpite você não pode duvidar.</p>`}
+      </div>` : ""}
+
+    ${minhaVez ? `
       <div class="card" style="border-color:var(--amber)">
         <div class="eyebrow" style="color:var(--amber)">é com você</div>
         <input id="palpite" placeholder="Diga uma da lista" maxlength="40" autocomplete="off">
         <button class="b1" data-a="palpitar" style="margin-top:10px">Falar</button>
       </div>`
-    : `<p class="pulse" style="color:var(--dim);font-size:13px">Vez de ${esc(nomeDe(sala.vez_de))}.</p>`}
+    : !emDisputa && sala.vez_de
+      ? `<p class="pulse" style="color:var(--dim);font-size:13px">Vez de ${esc(nomeDe(sala.vez_de))} — corra se quiser duvidar.</p>`
+      : ""}
     ${erro ? `<p class="erro">${esc(erro)}</p>` : ""}`;
 
   const inp = document.getElementById("palpite");
@@ -278,7 +284,6 @@ app.addEventListener("click", (e) => {
                                          document.getElementById("nome").value.trim());
   if (a === "rodada")  return novaRodada();
   if (a === "palpitar")return palpitar(document.getElementById("palpite").value.trim());
-  if (a === "aceitar") return aceitar();
   if (a === "duvidar") return duvidar();
   if (a === "sair")    return sair();
   if (a === "copiar")  return navigator.clipboard?.writeText(location.href.split("?")[0]);
